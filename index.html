@@ -18,7 +18,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.3/babel.min.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/lucide@1.52.0"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   
@@ -130,6 +130,15 @@
         fillRequired: "必填欄位不可為空！",
         rule1Title: "勞動基準法 第 38 條 (特休給予標準)",
         rule1Desc: "勞工在同一雇主或事業單位，繼續工作滿一定期間者，應依下列規定給予特別休假：",
+        rule1Tier1: "6 個月以上未滿 1 年：3 日",
+        rule1Tier2: "1 年以上未滿 2 年：7 日",
+        rule1Tier3: "2 年以上未滿 3 年：10 日",
+        rule1Tier4: "3 年以上未滿 5 年：14 日",
+        rule1Tier5: "5 年以上未滿 10 年：15 日",
+        rule1Tier6: "10 年以上：每 1 年加給 1 日，加至 30 日為止",
+        hireDateFormatError: "入職日期格式錯誤，請用民國年，例如 0114/9/1",
+        bonusCarry: "獎金/延續",
+        leaveNotes: "備註",
         rule2Title: "休假管控與調派",
         rule2Desc: "同仁請特休時報備主管，由主管檢視剩餘天數並調派支援技師，",
         rule2High: "該支援技師之加班費用由公司協助支出",
@@ -198,6 +207,15 @@
         fillRequired: "Required fields cannot be empty!",
         rule1Title: "Labor Standards Act Art. 38 (Leave Standard)",
         rule1Desc: "Workers who continue to work for the same employer or business entity for a certain period shall be granted annual paid leaves as follows:",
+        rule1Tier1: "6 months to under 1 year: 3 days",
+        rule1Tier2: "1 year to under 2 years: 7 days",
+        rule1Tier3: "2 years to under 3 years: 10 days",
+        rule1Tier4: "3 years to under 5 years: 14 days",
+        rule1Tier5: "5 years to under 10 years: 15 days",
+        rule1Tier6: "10 years or more: 1 additional day per year, up to 30 days",
+        hireDateFormatError: "Invalid hire date. Please use ROC year format, e.g. 0114/9/1",
+        bonusCarry: "Bonus / Carry",
+        leaveNotes: "Notes",
         rule2Title: "Leave Control & Dispatch",
         rule2Desc: "When requesting leave, report to the manager. The manager checks remaining days and dispatches backup technicians. ",
         rule2High: "The company covers the overtime pay for backup technicians.",
@@ -367,7 +385,7 @@
         setLoading(true); setError(null);
         try {
           const res = await executeGasApi('getDashboardData', '');
-          const mappedHeaders = ['name', 'hireDate', 'govLeave', 'managerBonus', 'subReward', 'usedLeave', 'totalLeave', '獎金/延續', 'finalLeave', 'notes'];
+          const mappedHeaders = ['name', 'hireDate', 'govLeave', 'managerBonus', 'subReward', 'usedLeave', 'totalLeave', 'bonusCarry', 'finalLeave', 'leaveNotes'];
           setLeaveHeaders(mappedHeaders);
           setLeaveData(res.leaveData);
           setManagerData(res.managerData); setBanquetData(res.banquetData); setTechData(res.techData);
@@ -446,11 +464,14 @@
 
       const handleToggle = async (rowIndex, currentPass) => {
         const newStatus = leaveData[rowIndex][7] === '獎金' ? '延續' : '獎金';
+        const previousState = JSON.parse(JSON.stringify(leaveData));
         const newData = [...leaveData]; newData[rowIndex][7] = newStatus;
         setLeaveData(newData);
         try {
           await executeGasApi('toggleBonusOption', currentPass, { dataIndex: rowIndex, statusStr: newStatus });
-        } catch(e) {}
+        } catch(e) {
+          setLeaveData(previousState); alert("Sync failed. " + e.message);
+        }
       };
 
       const handleOpenLeaveModal = (index = null, rowData = null) => {
@@ -461,6 +482,11 @@
 
       const handleSaveLeave = async () => {
         if (!leaveFormData[0] || !leaveFormData[1]) return alert(t('fillRequired'));
+        const dateParts = String(leaveFormData[1]).trim().split('/');
+        const [rocY, rocM, rocD] = dateParts.map(p => parseInt(p, 10));
+        const isValidRocDate = dateParts.length === 3 && dateParts.every(p => /^\d+$/.test(p))
+          && rocY >= 1 && rocY <= 200 && rocM >= 1 && rocM <= 12 && rocD >= 1 && rocD <= 31;
+        if (!isValidRocDate) return alert(t('hireDateFormatError'));
         let submitData = [...leaveFormData];
         if (!submitData[7]) submitData[7] = '延續';
         setIsLeaveModalOpen(false);
@@ -862,6 +888,9 @@
                       <div>
                         <h4 className="text-slate-100 font-bold mb-3 text-xl border-b border-brand-900/50 pb-2">{t('rule1Title')}</h4>
                         <p className="text-slate-300 mb-3 text-lg">{t('rule1Desc')}</p>
+                        <ul className="list-disc pl-6 space-y-1 text-slate-300 text-lg">
+                          {['rule1Tier1', 'rule1Tier2', 'rule1Tier3', 'rule1Tier4', 'rule1Tier5', 'rule1Tier6'].map(k => <li key={k}>{t(k)}</li>)}
+                        </ul>
                       </div>
                     </div>
                     <div className="flex items-start gap-4 bg-slate-800/30 p-4 rounded-lg border border-slate-700/50">
