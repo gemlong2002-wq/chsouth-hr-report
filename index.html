@@ -136,6 +136,7 @@
         rule1Tier4: "3 年以上未滿 5 年：14 日",
         rule1Tier5: "5 年以上未滿 10 年：15 日",
         rule1Tier6: "10 年以上：每 1 年加給 1 日，加至 30 日為止",
+        rule1Method: "本區採曆年制，以當年度 12/31 之年資，於年初一次給足當年度特休天數，優於勞基法最低標準。",
         hireDateFormatError: "入職日期格式錯誤，請用民國年，例如 0114/9/1",
         bonusCarry: "獎金/延續",
         leaveNotes: "備註",
@@ -213,6 +214,7 @@
         rule1Tier4: "3 years to under 5 years: 14 days",
         rule1Tier5: "5 years to under 10 years: 15 days",
         rule1Tier6: "10 years or more: 1 additional day per year, up to 30 days",
+        rule1Method: "This region uses the calendar-year system: annual leave is granted in full at the start of each year based on seniority as of Dec 31, exceeding the statutory minimum.",
         hireDateFormatError: "Invalid hire date. Please use ROC year format, e.g. 0114/9/1",
         bonusCarry: "Bonus / Carry",
         leaveNotes: "Notes",
@@ -891,6 +893,7 @@
                         <ul className="list-disc pl-6 space-y-1 text-slate-300 text-lg">
                           {['rule1Tier1', 'rule1Tier2', 'rule1Tier3', 'rule1Tier4', 'rule1Tier5', 'rule1Tier6'].map(k => <li key={k}>{t(k)}</li>)}
                         </ul>
+                        <p className="text-slate-300 mt-3 text-lg">{t('rule1Method')}</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-4 bg-slate-800/30 p-4 rounded-lg border border-slate-700/50">
