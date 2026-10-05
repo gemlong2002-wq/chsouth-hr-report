@@ -4,6 +4,7 @@
 
 ## 鐵律0:不 push、不部署
 - 禁止執行 git push(任何分支)。push 一律由 Boss 本人執行。
+- 例外:Boss 本人在 Code 視窗明確下達「push」指令時,視為 Boss 拍板,Code 可代為執行 git push origin main。Code 不得自行提議後直接 push,也不得把其他文字解讀為 push 指令。
 - 禁止任何部署動作。
 
 ## 鐵律1:後端唯讀
