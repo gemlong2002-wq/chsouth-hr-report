@@ -19,8 +19,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.3/babel.min.js"></script>
   <script src="https://unpkg.com/lucide@1.52.0"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   
   <style>
     body { background-color: #020617; color: #f8fafc; font-family: 'ui-monospace', monospace; }
@@ -48,7 +46,22 @@
       .print-shadow { box-shadow: none !important; border: none !important; background: none !important; }
       .action-col { display: none !important; }
       tr { page-break-inside: avoid; }
+
+      /* 列印專用報表：只有「匯出 PDF」按鈕加上 body.print-report-mode 時生效，Ctrl+P 不受影響 */
+      body.print-report-mode #app-main { display: none !important; }
+      body.print-report-mode #print-report { display: block !important; }
+      #print-report { font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif; color: #000 !important; background: #fff !important; }
+      #print-report .pr-head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 12px; }
+      #print-report .pr-title { font-size: 18pt; font-weight: bold; }
+      #print-report .pr-date { font-size: 11pt; }
+      #print-report table { width: 100% !important; border-collapse: collapse !important; border: 2px solid #000 !important; margin-bottom: 0 !important; }
+      #print-report thead { display: table-header-group; }
+      #print-report tfoot { display: table-row-group; }
+      #print-report th, #print-report td { border: 1px solid #000 !important; padding: 5px 8px !important; font-size: 12pt !important; color: #000 !important; text-align: center; }
+      #print-report th { background-color: #e5e7eb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      #print-report tfoot td { font-weight: bold; }
     }
+    #print-report { display: none; }
   </style>
 </head>
 <body class="antialiased min-h-screen pb-12">
@@ -325,8 +338,7 @@
       
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
-      const containerRef = useRef(null);
-      const [isPdfMode, setIsPdfMode] = useState(false);
+      const [systemRocYear, setSystemRocYear] = useState(null);
       
       const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
       const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
@@ -391,6 +403,7 @@
           setLeaveHeaders(mappedHeaders);
           setLeaveData(res.leaveData);
           setManagerData(res.managerData); setBanquetData(res.banquetData); setTechData(res.techData);
+          setSystemRocYear(res.systemRocYear ?? null);
         } catch (err) {
           setError("Error: " + err.message);
         } finally {
@@ -398,24 +411,23 @@
         }
       };
 
+      // 報表年度：優先用後端 systemRocYear，缺值時沿用前端以系統日期推算的年度
+      const reportYear = systemRocYear ?? (new Date().getFullYear() - 1911);
+
       const handleExportPDF = () => {
-        window.scrollTo(0, 0); setIsPdfMode(true);
-        setTimeout(() => {
-          const element = containerRef.current;
-          window.html2canvas(element, { scale: 2, useCORS: true, x: 0, y: 0, scrollX: 0, scrollY: 0 }).then(canvas => {
-            const imgData = canvas.toDataURL('image/jpeg', 1.0);
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('landscape', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth(); const pdfHeight = pdf.internal.pageSize.getHeight();
-            const canvasRatio = canvas.height / canvas.width; const pdfRatio = pdfHeight / pdfWidth;
-            let finalWidth, finalHeight;
-            if (canvasRatio > pdfRatio) { finalHeight = pdfHeight; finalWidth = pdfHeight / canvasRatio; }
-            else { finalWidth = pdfWidth; finalHeight = pdfWidth * canvasRatio; }
-            const x = (pdfWidth - finalWidth) / 2; const y = (pdfHeight - finalHeight) / 2;
-            pdf.addImage(imgData, 'JPEG', x, y, finalWidth, finalHeight);
-            pdf.save('Report_Export.pdf'); setIsPdfMode(false);
-          });
-        }, 800);
+        const originalTitle = document.title;
+        // A4 直式只在報表模式注入，避免影響使用者自己按 Ctrl+P 的版面
+        const pageStyle = document.createElement('style');
+        pageStyle.textContent = '@page { size: A4 portrait; margin: 12mm; }';
+        document.head.appendChild(pageStyle);
+        document.body.classList.add('print-report-mode');
+        document.title = `${reportYear}年度南區特休結算表`;
+        window.addEventListener('afterprint', () => {
+          document.body.classList.remove('print-report-mode');
+          document.title = originalTitle;
+          pageStyle.remove();
+        }, { once: true });
+        window.print();
       };
 
       const handleQuickDeduct = async (rowIndex, currentPass) => {
@@ -578,8 +590,14 @@
       const mappedBanquet = filterByTemporal(mapOriginalIndex(banquetData));
       const mappedTech = filterByTemporal(mapOriginalIndex(techData));
 
+      const now = new Date();
+      const printDate = `${now.getFullYear() - 1911}/${now.getMonth() + 1}/${now.getDate()}`;
+      const bonusCount = leaveData.filter(row => row[7] === '獎金').length;
+      const finalLeaveSum = leaveData.reduce((sum, row) => sum + (parseInt(row[8], 10) || 0), 0);
+
       return (
-        <div className={`p-6 max-w-[95%] mx-auto relative print:max-w-full print:p-0 ${isPdfMode ? 'pdf-mode max-w-none w-[1500px] bg-slate-950 text-white' : ''}`} ref={containerRef}>
+        <>
+        <div id="app-main" className="p-6 max-w-[95%] mx-auto relative print:max-w-full print:p-0">
           
           <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-700 print-header">
             <div>
@@ -938,6 +956,37 @@
           </div>
 
         </div>
+
+        <div id="print-report">
+          <div className="pr-head">
+            <div className="pr-title">{reportYear} 年度 南區同仁特休結算表</div>
+            <div className="pr-date">製表日期：{printDate}</div>
+          </div>
+          <table>
+            <thead>
+              <tr><th>序號</th><th>姓名</th><th>入職日期</th><th>結算天數</th><th>獎金/延續</th></tr>
+            </thead>
+            <tbody>
+              {leaveData.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  <td>{rowIndex + 1}</td>
+                  <td>{row[0] || '-'}</td>
+                  <td>{String(row[1] || '').replace(/^0+(?=\d)/, '') || '-'}</td>
+                  <td>{parseInt(row[8], 10) || 0}</td>
+                  <td>{row[7] || '延續'}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan="3">合計人數：{leaveData.length} 人</td>
+                <td>{finalLeaveSum}</td>
+                <td>獎金 {bonusCount} 人／延續 {leaveData.length - bonusCount} 人</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        </>
       );
     };
 
