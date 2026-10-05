@@ -111,6 +111,7 @@
         term: "任期區間 (一期三個月)",
         eventLoc: "活動名稱 / 地點",
         date: "舉辦日期",
+        hireDate: "入職日期",
         yearQ: "年度與季度",
         notes: "活動備註",
         auth: "權限驗證",
@@ -178,6 +179,7 @@
         term: "Term (3 Months per period)",
         eventLoc: "Event Name / Location",
         date: "Date",
+        hireDate: "Hire Date",
         yearQ: "Year & Quarter",
         notes: "Notes",
         auth: "Authentication Required",
@@ -365,7 +367,7 @@
         setLoading(true); setError(null);
         try {
           const res = await executeGasApi('getDashboardData', '');
-          const mappedHeaders = ['name', 'date', 'govLeave', 'managerBonus', 'subReward', 'usedLeave', 'totalLeave', '獎金/延續', 'finalLeave', 'notes'];
+          const mappedHeaders = ['name', 'hireDate', 'govLeave', 'managerBonus', 'subReward', 'usedLeave', 'totalLeave', '獎金/延續', 'finalLeave', 'notes'];
           setLeaveHeaders(mappedHeaders);
           setLeaveData(res.leaveData);
           setManagerData(res.managerData); setBanquetData(res.banquetData); setTechData(res.techData);
