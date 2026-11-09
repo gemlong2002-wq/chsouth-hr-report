@@ -844,11 +844,11 @@
                         <td className="px-5 py-4 border border-slate-700 text-center text-slate-300 font-bold text-xl"><span className="calc-tip" {...tipProps(`${rowIndex}-total`, calcTips.total)}>{totalRaw}</span></td>
                         <td className="px-5 py-4 border border-slate-700 text-center print-highlight">
                           <div className="flex items-center gap-2 justify-center no-print">
-                            <span className={`text-sm ${row[7] !== '獎金' ? 'text-brand-400 font-bold' : 'text-slate-500'}`}>{t('carry')}</span>
-                            <button disabled={isRowLocked} onClick={() => requireAuth((pass) => handleToggle(rowIndex, pass))} className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${row[7] === '獎金' ? 'bg-amber-500' : 'bg-brand-600'}`}>
+                            <span className={`text-sm whitespace-nowrap ${row[7] !== '獎金' ? 'text-brand-400 font-bold' : 'text-slate-500'}`}>{t('carry')}</span>
+                            <button disabled={isRowLocked} onClick={() => requireAuth((pass) => handleToggle(rowIndex, pass))} className={`relative inline-flex h-5 w-10 shrink-0 items-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${row[7] === '獎金' ? 'bg-amber-500' : 'bg-brand-600'}`}>
                               <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${row[7] === '獎金' ? 'translate-x-6' : 'translate-x-1'}`} />
                             </button>
-                            <span className={`text-sm ${row[7] === '獎金' ? 'text-amber-400 font-bold' : 'text-slate-500'}`}>{t('bonus')}</span>
+                            <span className={`text-sm whitespace-nowrap ${row[7] === '獎金' ? 'text-amber-400 font-bold' : 'text-slate-500'}`}>{t('bonus')}</span>
                           </div>
                           <span className="hidden print:inline-block print:text-black">{row[7] === '獎金' ? t('bonus') : t('carry')}</span>
                         </td>
