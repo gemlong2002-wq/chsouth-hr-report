@@ -65,6 +65,9 @@
       #calc-tip { display: none !important; }
     }
     #print-report { display: none; }
+    @media screen {
+      .screen-nowrap, .screen-nowrap-table th, .screen-nowrap-table td { white-space: nowrap; }
+    }
     .calc-tip { border-bottom: 1px dashed rgba(148, 163, 184, 0.7); cursor: help; }
     #calc-tip { position: fixed; left: 0; top: 0; z-index: 70; width: max-content; padding: 8px 12px; background: #0f172a; color: #e2e8f0; border: 1px solid #475569; border-radius: 8px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6); font-size: 14px; line-height: 1.5; font-weight: normal; text-align: left; overflow-wrap: anywhere; pointer-events: none; transform-origin: 0 0; }
     #calc-tip .calc-tip-warn { color: #f87171; font-weight: bold; margin-top: 4px; }
@@ -327,15 +330,15 @@
 
     const EventCard = ({ title, icon, textColor, headers, dataList, onOpenModal, onEdit, onDelete, displayStart = 0, t }) => (
       <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-xl print-shadow">
-        <div className="bg-slate-800 px-6 py-4 border-b border-slate-700 flex justify-between items-center print:bg-transparent print:px-0">
-          <h3 className={`text-xl font-bold ${textColor} flex items-center gap-2 print:text-black print:text-lg`}>
+        <div className="bg-slate-800 px-6 py-4 border-b border-slate-700 flex flex-wrap gap-2 justify-between items-center print:bg-transparent print:px-0">
+          <h3 className={`screen-nowrap text-xl font-bold ${textColor} flex items-center gap-2 print:text-black print:text-lg`}>
             <Icon name={icon} className="w-5 h-5 no-print" /> {t(title)}
           </h3>
-          <button onClick={onOpenModal} className="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1 rounded transition-colors flex items-center gap-1 no-print text-lg">
+          <button onClick={onOpenModal} className="whitespace-nowrap shrink-0 text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1 rounded transition-colors flex items-center gap-1 no-print text-lg">
             <Icon name="plus" className="w-4 h-4" /> {t('addRecord')}
           </button>
         </div>
-        <table className="min-w-full text-left text-slate-300">
+        <div className="overflow-x-auto"><table className="screen-nowrap-table min-w-full text-left text-slate-300">
           <thead className="bg-slate-900/50 text-slate-400 text-sm print:bg-gray-100">
             <tr>
               {headers.map((h, i) => <th key={i} className="px-6 py-3 border-b border-slate-700 print:border-black print:text-black text-lg">{t(h)}</th>)}
@@ -363,7 +366,7 @@
               ))
             )}
           </tbody>
-        </table>
+        </table></div>
       </div>
     );
 
@@ -752,45 +755,45 @@
         <>
         <div id="app-main" className="p-6 max-w-[95%] mx-auto relative print:max-w-full print:p-0">
           
-          <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-700 print-header">
+          <div className="flex flex-wrap gap-4 items-center justify-between mb-8 pb-4 border-b border-slate-700 print-header">
             <div>
-              <h1 className="text-3xl font-bold text-slate-100 flex items-center gap-3 print:text-black">
+              <h1 className="screen-nowrap text-3xl font-bold text-slate-100 flex items-center gap-3 print:text-black">
                 <Icon name="shield-check" className="w-8 h-8 text-brand-400 no-print" />
                 {t('title')}
               </h1>
-              <div className="flex gap-3 mt-3 print:mt-1">
-                <p className="text-brand-400 text-lg font-bold bg-brand-900/30 inline-flex items-center gap-2 px-3 py-1 rounded border border-brand-500/30 print-subtitle">
+              <div className="flex flex-wrap gap-3 mt-3 print:mt-1">
+                <p className="screen-nowrap shrink-0 text-brand-400 text-lg font-bold bg-brand-900/30 inline-flex items-center gap-2 px-3 py-1 rounded border border-brand-500/30 print-subtitle">
                   {t('basis')}
                 </p>
-                <button onClick={() => setIsRuleModalOpen(true)} className="text-amber-400 text-lg font-bold bg-amber-900/30 hover:bg-amber-900/50 transition-colors inline-flex items-center gap-2 px-3 py-1 rounded border border-amber-500/30 cursor-pointer no-print">
+                <button onClick={() => setIsRuleModalOpen(true)} className="whitespace-nowrap shrink-0 text-amber-400 text-lg font-bold bg-amber-900/30 hover:bg-amber-900/50 transition-colors inline-flex items-center gap-2 px-3 py-1 rounded border border-amber-500/30 cursor-pointer no-print">
                   <Icon name="book-open" className="w-4 h-4" /> {t('rules')}
                 </button>
-                <p className="text-emerald-400 text-lg font-bold bg-emerald-900/30 inline-flex items-center gap-2 px-3 py-1 rounded border border-emerald-500/30 print-subtitle no-print">
+                <p className="whitespace-nowrap shrink-0 text-emerald-400 text-lg font-bold bg-emerald-900/30 inline-flex items-center gap-2 px-3 py-1 rounded border border-emerald-500/30 print-subtitle no-print">
                   <Icon name="server" className="w-4 h-4" /> HEADLESS API DECOUPLED
                 </p>
                 {isUnlocked ? (
-                  <button onClick={handleLockSystem} className="text-red-400 text-lg font-bold bg-red-900/30 hover:bg-red-900/50 transition-colors inline-flex items-center gap-2 px-3 py-1 rounded border border-red-500/30 cursor-pointer no-print shadow-[2px_2px_0px_0px_rgba(239,68,68,0.4)] hover:translate-y-px hover:shadow-none">
+                  <button onClick={handleLockSystem} className="whitespace-nowrap shrink-0 text-red-400 text-lg font-bold bg-red-900/30 hover:bg-red-900/50 transition-colors inline-flex items-center gap-2 px-3 py-1 rounded border border-red-500/30 cursor-pointer no-print shadow-[2px_2px_0px_0px_rgba(239,68,68,0.4)] hover:translate-y-px hover:shadow-none">
                     <Icon name="unlock" className="w-4 h-4" /> {t('unlocked')}
                   </button>
                 ) : (
-                  <button onClick={() => { setPendingAction(null); setPasswordInput(''); setAuthError(''); setShowAuthModal(true); }} className="text-slate-400 text-lg font-bold bg-slate-800/80 hover:bg-slate-700 transition-colors inline-flex items-center gap-2 px-3 py-1 rounded border border-slate-600 no-print cursor-pointer shadow-[2px_2px_0px_0px_rgba(71,85,105,1)] hover:translate-y-px hover:shadow-none">
+                  <button onClick={() => { setPendingAction(null); setPasswordInput(''); setAuthError(''); setShowAuthModal(true); }} className="whitespace-nowrap shrink-0 text-slate-400 text-lg font-bold bg-slate-800/80 hover:bg-slate-700 transition-colors inline-flex items-center gap-2 px-3 py-1 rounded border border-slate-600 no-print cursor-pointer shadow-[2px_2px_0px_0px_rgba(71,85,105,1)] hover:translate-y-px hover:shadow-none">
                     <Icon name="lock" className="w-4 h-4" /> {t('locked')}
                   </button>
                 )}
               </div>
             </div>
             
-            <div className="flex gap-4 no-print">
-              <button onClick={() => setLang(l => l === 'zh' ? 'en' : 'zh')} className="px-5 py-3 text-lg bg-slate-900 hover:bg-slate-800 text-yellow-400 font-bold rounded-lg flex items-center gap-2 border border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.2)] transition-transform hover:scale-105">
+            <div className="flex flex-wrap gap-4 no-print">
+              <button onClick={() => setLang(l => l === 'zh' ? 'en' : 'zh')} className="whitespace-nowrap shrink-0 px-5 py-3 text-lg bg-slate-900 hover:bg-slate-800 text-yellow-400 font-bold rounded-lg flex items-center gap-2 border border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.2)] transition-transform hover:scale-105">
                 <Icon name="globe" className="w-5 h-5" /> {t('langBtn')}
               </button>
-              <button onClick={fetchData} disabled={loading} className="px-5 py-3 text-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold rounded-lg flex items-center gap-2 border border-slate-600 shadow-lg transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100">
+              <button onClick={fetchData} disabled={loading} className="whitespace-nowrap shrink-0 px-5 py-3 text-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold rounded-lg flex items-center gap-2 border border-slate-600 shadow-lg transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100">
                 <Icon name="refresh-cw" className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} /> {t('sync')}
               </button>
-              <button onClick={handleExportPDF} className="px-5 py-3 text-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg flex items-center gap-2 border border-slate-600 shadow-lg transition-transform hover:scale-105">
+              <button onClick={handleExportPDF} className="whitespace-nowrap shrink-0 px-5 py-3 text-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg flex items-center gap-2 border border-slate-600 shadow-lg transition-transform hover:scale-105">
                 <Icon name="printer" className="w-5 h-5" /> {t('exportPDF')}
               </button>
-              <button onClick={() => requireAuth(() => handleOpenLeaveModal())} className="px-5 py-3 text-lg bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-lg flex items-center gap-2 border border-brand-500 shadow-lg transition-transform hover:scale-105">
+              <button onClick={() => requireAuth(() => handleOpenLeaveModal())} className="whitespace-nowrap shrink-0 px-5 py-3 text-lg bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-lg flex items-center gap-2 border border-brand-500 shadow-lg transition-transform hover:scale-105">
                 <Icon name="user-plus" className="w-5 h-5" /> {t('addEmp')}
               </button>
             </div>
@@ -805,7 +808,7 @@
 
           <div className="bg-slate-900 rounded-xl overflow-hidden shadow-2xl mb-12 print-shadow">
             <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse border-2 border-slate-700 text-lg">
+              <table className="screen-nowrap-table min-w-full border-collapse border-2 border-slate-700 text-lg">
                 <thead className="bg-slate-800">
                   <tr>
                     <th className="px-4 py-4 border-2 border-slate-600 text-center text-slate-400 w-16">{t('no')}</th>
@@ -890,16 +893,16 @@
 
           <div className="mt-12">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-              <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-3 print:text-black print:text-xl">
+              <h2 className="screen-nowrap text-2xl font-bold text-slate-100 flex items-center gap-3 print:text-black print:text-xl">
                 <Icon name="database" className="w-7 h-7 text-emerald-400 no-print" /> {t('orgTitle')}
               </h2>
               <div className="flex flex-wrap items-center gap-2 bg-slate-900 p-1.5 rounded-lg border border-slate-700 shadow-inner no-print">
-                <button onClick={() => setSelectedYear('ALL')} className={`px-4 py-2 rounded-md text-lg font-bold transition-all ${selectedYear === 'ALL' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>
+                <button onClick={() => setSelectedYear('ALL')} className={`whitespace-nowrap shrink-0 px-4 py-2 rounded-md text-lg font-bold transition-all ${selectedYear === 'ALL' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>
                   <Icon name="history" className="w-4 h-4 mr-2 inline" />{t('history')}
                 </button>
                 <div className="w-px h-6 bg-slate-700 mx-1"></div>
                 {availableYears.map(year => (
-                  <button key={year} onClick={() => setSelectedYear(year)} className={`px-4 py-2 rounded-md text-lg font-bold transition-all ${selectedYear === year ? 'bg-brand-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>
+                  <button key={year} onClick={() => setSelectedYear(year)} className={`whitespace-nowrap shrink-0 px-4 py-2 rounded-md text-lg font-bold transition-all ${selectedYear === year ? 'bg-brand-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>
                     {year} {t('yearText')}
                   </button>
                 ))}
