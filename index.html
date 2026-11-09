@@ -63,8 +63,10 @@
 
       .calc-tip { border-bottom: none !important; }
       #calc-tip { display: none !important; }
+      #digital-rain { display: none !important; }
     }
     #print-report { display: none; }
+    #digital-rain { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.2; pointer-events: none; }
     @media screen {
       .screen-nowrap, .screen-nowrap-table th, .screen-nowrap-table td { white-space: nowrap; }
     }
@@ -74,6 +76,7 @@
   </style>
 </head>
 <body class="antialiased min-h-screen pb-12">
+  <canvas id="digital-rain" aria-hidden="true"></canvas>
   <div id="root"></div>
 
   <script type="text/babel">
@@ -1164,6 +1167,113 @@
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<ErrorBoundary><App /></ErrorBoundary>);
+  </script>
+  <script>
+    // 背景數位雨：獨立於 React，不碰任何資料或元件狀態
+    (function () {
+      var canvas = document.getElementById('digital-rain');
+      var ctx = canvas.getContext('2d');
+      var CELL = 16;
+      var FRAME_MS = 1000 / 24;
+      var HEAD_COLOR = '#bae6fd';
+      var TAIL_COLOR = '#38bdf8';
+      var GLYPH_COUNT = 32;
+      var CHARS = '0123456789';
+      for (var code = 0xFF66; code <= 0xFF9D; code++) CHARS += String.fromCharCode(code);
+
+      var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      var columns = [];
+      var rows = 0;
+      var width = 0;
+      var height = 0;
+      var rafId = null;
+      var lastDraw = 0;
+      var resizeTimer = null;
+
+      var randomChar = function () { return CHARS.charAt(Math.floor(Math.random() * CHARS.length)); };
+      var newColumn = function (x, scatter) {
+        var glyphs = [];
+        for (var i = 0; i < GLYPH_COUNT; i++) glyphs.push(randomChar());
+        return {
+          x: x,
+          head: scatter ? Math.random() * rows * 1.5 - rows * 0.5 : -Math.random() * rows * 0.5,
+          speed: 8 + Math.random() * 4,
+          tail: 10 + Math.floor(Math.random() * 14),
+          glyphs: glyphs
+        };
+      };
+      var columnGap = function () {
+        var sparse = window.innerWidth < 768 || navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
+        return sparse ? CELL * 2 : CELL;
+      };
+      var resize = function () {
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        var gap = columnGap();
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.font = '15px ui-monospace, monospace';
+        ctx.textBaseline = 'top';
+        rows = Math.ceil(height / CELL);
+        var count = Math.ceil(width / gap);
+        // 手機網址列伸縮只改高度，欄數不變就保留現有雨滴
+        if (count !== columns.length || (columns[1] && columns[1].x !== gap)) {
+          columns = [];
+          for (var i = 0; i < count; i++) columns.push(newColumn(i * gap, true));
+        }
+      };
+      var draw = function (seconds) {
+        ctx.clearRect(0, 0, width, height);
+        for (var c = 0; c < columns.length; c++) {
+          var column = columns[c];
+          column.head += column.speed * seconds;
+          var head = Math.floor(column.head);
+          if (head - column.tail > rows) { columns[c] = newColumn(column.x, false); continue; }
+          if (Math.random() < 0.05) column.glyphs[Math.floor(Math.random() * GLYPH_COUNT)] = randomChar();
+          ctx.fillStyle = TAIL_COLOR;
+          for (var i = column.tail; i >= 1; i--) {
+            var tailRow = head - i;
+            if (tailRow < 0 || tailRow > rows) continue;
+            ctx.globalAlpha = 0.75 * (1 - i / column.tail);
+            ctx.fillText(column.glyphs[tailRow % GLYPH_COUNT], column.x, tailRow * CELL);
+          }
+          if (head >= 0 && head <= rows) {
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = HEAD_COLOR;
+            ctx.fillText(column.glyphs[head % GLYPH_COUNT], column.x, head * CELL);
+          }
+        }
+      };
+      var tick = function (now) {
+        rafId = window.requestAnimationFrame(tick);
+        if (now - lastDraw < FRAME_MS - 1) return;
+        draw(lastDraw ? Math.min((now - lastDraw) / 1000, 0.1) : 0);
+        lastDraw = now;
+      };
+      var sync = function () {
+        var shouldRun = !document.hidden && !reducedMotion.matches;
+        if (shouldRun && rafId === null) {
+          lastDraw = 0;
+          rafId = window.requestAnimationFrame(tick);
+        } else if (!shouldRun && rafId !== null) {
+          window.cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        if (reducedMotion.matches) ctx.clearRect(0, 0, width, height);
+      };
+
+      resize();
+      sync();
+      window.addEventListener('resize', function () {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(function () { resize(); sync(); }, 200);
+      });
+      document.addEventListener('visibilitychange', sync);
+      if (reducedMotion.addEventListener) reducedMotion.addEventListener('change', sync);
+      else if (reducedMotion.addListener) reducedMotion.addListener(sync);
+    })();
   </script>
 </body>
 </html>
