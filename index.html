@@ -60,15 +60,21 @@
       #print-report th, #print-report td { border: 1px solid #000 !important; padding: 5px 8px !important; font-size: 12pt !important; color: #000 !important; text-align: center; }
       #print-report th { background-color: #e5e7eb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       #print-report tfoot td { font-weight: bold; }
+
+      .calc-tip { border-bottom: none !important; }
+      #calc-tip { display: none !important; }
     }
     #print-report { display: none; }
+    .calc-tip { border-bottom: 1px dashed rgba(148, 163, 184, 0.7); cursor: help; }
+    #calc-tip { position: fixed; left: 0; top: 0; z-index: 70; width: max-content; padding: 8px 12px; background: #0f172a; color: #e2e8f0; border: 1px solid #475569; border-radius: 8px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6); font-size: 14px; line-height: 1.5; font-weight: normal; text-align: left; overflow-wrap: anywhere; pointer-events: none; transform-origin: 0 0; }
+    #calc-tip .calc-tip-warn { color: #f87171; font-weight: bold; margin-top: 4px; }
   </style>
 </head>
 <body class="antialiased min-h-screen pb-12">
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+    const { useState, useEffect, useLayoutEffect, useRef } = React;
 
     class ErrorBoundary extends React.Component {
       constructor(props) { super(props); this.state = { hasError: false, error: null }; }
@@ -361,6 +367,45 @@
       </div>
     );
 
+    // 計算說明專用：只產生提示文字，畫面上的數字一律用系統值
+    const LAW_LEAVE_TIERS = [
+      { months: 6, label: '未滿 6 個月', days: 0 },
+      { months: 12, label: '6 個月以上未滿 1 年', days: 3 },
+      { months: 24, label: '1 年以上未滿 2 年', days: 7 },
+      { months: 36, label: '2 年以上未滿 3 年', days: 10 },
+      { months: 60, label: '3 年以上未滿 5 年', days: 14 },
+      { months: 120, label: '5 年以上未滿 10 年', days: 15 }
+    ];
+    const calcLawLeave = (hireDate, rocYear) => {
+      const parts = String(hireDate || '').trim().split('/').map(p => parseInt(p, 10));
+      if (parts.length !== 3 || parts.some(isNaN)) return null;
+      // 截止日是 12/31，入職日不會超過 31，所以不會有「日未到少算一個月」的情況
+      const totalMonths = Math.max(0, (rocYear - parts[0]) * 12 + (12 - parts[1]));
+      const years = Math.floor(totalMonths / 12);
+      const tier = LAW_LEAVE_TIERS.find(item => totalMonths < item.months);
+      return { years, months: totalMonths % 12, label: tier ? tier.label : '10 年以上', days: tier ? tier.days : Math.min(30, 15 + (years - 9)) };
+    };
+    const buildCalcTips = (row, managerData, rocYear) => {
+      const toInt = (value) => parseInt(value, 10) || 0;
+      const tipOf = (text, expected, systemValue) => ({ text, warn: expected !== toInt(systemValue) });
+      const hireDisplay = String(row[1] || '').replace(/^0+(?=\d)/, '') || '-';
+      const law = calcLawLeave(row[1], rocYear);
+      const lawDays = law ? law.days : 0;
+      const terms = managerData.filter(m => m[1] === row[0] && String(m[2]).includes(String(rocYear))).map(m => m[2]);
+      const sub = toInt(row[4]);
+      const used = toInt(row[5]);
+      const total = lawDays + terms.length + sub;
+      const final = total - used;
+      return {
+        law: law
+          ? tipOf(`入職 ${hireDisplay}，算到 ${rocYear}/12/31 年資 ${law.years} 年 ${law.months} 個月 → 級距「${law.label}」→ ${lawDays} 天`, lawDays, row[2])
+          : { text: `入職日期「${hireDisplay}」無法判讀，無法計算`, warn: true },
+        bonus: tipOf(terms.length ? `${rocYear} 年擔任主管 ${terms.length} 期（${terms.join('、')}），每期 +1 → +${terms.length} 天` : `${rocYear} 年未擔任主管 → 0 天`, terms.length, row[3]),
+        total: tipOf(`勞基法 ${lawDays} + 主管加給 ${terms.length} + 代班 ${sub} = ${total} 天`, total, row[6]),
+        final: tipOf(`年度總額 ${total} − 已休 ${used} = ${final} 天`, final, row[8])
+      };
+    };
+
     const App = () => {
       const [lang, setLang] = useState('zh');
       const t = (key) => dict[lang][key] || key;
@@ -387,6 +432,8 @@
       const [lockedRows, setLockedRows] = useState([]);
       const savingRef = useRef(false);
       const [isSaving, setIsSaving] = useState(false);
+      const [calcTip, setCalcTip] = useState(null);   // 同一時間只開一個：{ key, text, warn, rect }
+      const calcTipRef = useRef(null);
       const [systemRocYear, setSystemRocYear] = useState(null);
       
       const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
@@ -416,6 +463,57 @@
         const sortedYears = Array.from(yearsSet).sort().reverse();
         setAvailableYears(sortedYears);
       }, [managerData, banquetData, techData]);
+
+      useEffect(() => {
+        if (!calcTip) return;
+        const close = () => setCalcTip(null);
+        const onPointerDown = (e) => { if (!e.target.closest || !e.target.closest('[data-calc-tip]')) close(); };
+        const viewport = window.visualViewport;
+        document.addEventListener('pointerdown', onPointerDown);
+        window.addEventListener('scroll', close, true);
+        window.addEventListener('resize', close);
+        if (viewport) { viewport.addEventListener('scroll', close); viewport.addEventListener('resize', close); }
+        return () => {
+          document.removeEventListener('pointerdown', onPointerDown);
+          window.removeEventListener('scroll', close, true);
+          window.removeEventListener('resize', close);
+          if (viewport) { viewport.removeEventListener('scroll', close); viewport.removeEventListener('resize', close); }
+        };
+      }, [!!calcTip]);
+
+      // 依可視範圍定位：放不下就往內翻；手機頁面被縮放時，反向放大讓字維持可讀
+      useLayoutEffect(() => {
+        const el = calcTipRef.current;
+        if (!calcTip || !el) return;
+        const vv = window.visualViewport || { offsetLeft: 0, offsetTop: 0, width: document.documentElement.clientWidth, height: window.innerHeight, scale: 1 };
+        const scale = 1 / vv.scale;
+        const margin = 8 * scale;
+        const gap = 6 * scale;
+        el.style.maxWidth = `${Math.min(320, vv.width * vv.scale - 16)}px`;
+        el.style.transform = `scale(${scale})`;
+        const width = el.offsetWidth * scale;
+        const height = el.offsetHeight * scale;
+        const { rect } = calcTip;
+        const minLeft = vv.offsetLeft + margin;
+        const minTop = vv.offsetTop + margin;
+        const left = Math.max(minLeft, Math.min(rect.left + rect.width / 2 - width / 2, vv.offsetLeft + vv.width - width - margin));
+        let top = rect.bottom + gap;
+        if (top + height > vv.offsetTop + vv.height - margin) top = Math.max(minTop, rect.top - height - gap);
+        el.style.left = `${left}px`;
+        el.style.top = `${top}px`;
+      }, [calcTip]);
+
+      const tipProps = (key, info) => ({
+        'data-calc-tip': key,
+        onPointerEnter: (e) => { if (e.pointerType === 'mouse') setCalcTip({ key, ...info, rect: e.currentTarget.getBoundingClientRect() }); },
+        onPointerLeave: (e) => { if (e.pointerType === 'mouse') setCalcTip(null); },
+        // 觸控用 pointerup：手指捲動時瀏覽器會取消，不會誤開
+        onPointerUp: (e) => {
+          if (e.pointerType === 'mouse') return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          setCalcTip(current => (current && current.key === key) ? null : { key, ...info, rect });
+        }
+      });
 
       const requireAuth = (actionCallback) => {
         if (isUnlocked) { actionCallback(authPasscode); } else {
@@ -722,6 +820,7 @@
                     <tr><td colSpan="12" className="p-12 text-center text-red-400 text-lg font-bold">{t('readFailedRow')}</td></tr>
                   ) : leaveData.map((row, rowIndex) => {
                     const isRowLocked = lockedRows.includes(rowIndex);
+                    const calcTips = buildCalcTips(row, managerData, reportYear);
                     const used = parseInt(row[5], 10) || 0;
                     const totalRaw = parseInt(row[6], 10) || 0;   // 顯示用，忠實呈現真實資料
                     const total = totalRaw || 1;                   // 僅用於進度條除法，避免除以零
@@ -738,11 +837,11 @@
                         <td className="px-4 py-4 text-center border border-slate-700 text-slate-500 font-bold print:text-black">{rowIndex + 1}</td>
                         <td className="px-5 py-4 whitespace-nowrap border border-slate-700 text-slate-300 font-bold">{row[0] || '-'}</td>
                         <td className="px-5 py-4 whitespace-nowrap border border-slate-700 text-slate-300 font-mono">{row[1] || '-'}</td>
-                        <td className="px-5 py-4 text-center border border-slate-700 text-slate-400">{row[2] || '0'}</td>
-                        <td className="px-5 py-4 text-center border border-slate-700 text-amber-400 font-bold">{row[3] || '0'}</td>
+                        <td className="px-5 py-4 text-center border border-slate-700 text-slate-400"><span className="calc-tip" {...tipProps(`${rowIndex}-law`, calcTips.law)}>{row[2] || '0'}</span></td>
+                        <td className="px-5 py-4 text-center border border-slate-700 text-amber-400 font-bold"><span className="calc-tip" {...tipProps(`${rowIndex}-bonus`, calcTips.bonus)}>{row[3] || '0'}</span></td>
                         <td className="px-5 py-4 text-center border border-slate-700 text-emerald-400 font-bold">{row[4] || '0'}</td>
                         <td className="px-5 py-4 border border-slate-700 text-center text-slate-400 font-bold">{used}</td>
-                        <td className="px-5 py-4 border border-slate-700 text-center text-slate-300 font-bold text-xl">{totalRaw}</td>
+                        <td className="px-5 py-4 border border-slate-700 text-center text-slate-300 font-bold text-xl"><span className="calc-tip" {...tipProps(`${rowIndex}-total`, calcTips.total)}>{totalRaw}</span></td>
                         <td className="px-5 py-4 border border-slate-700 text-center print-highlight">
                           <div className="flex items-center gap-2 justify-center no-print">
                             <span className={`text-sm ${row[7] !== '獎金' ? 'text-brand-400 font-bold' : 'text-slate-500'}`}>{t('carry')}</span>
@@ -756,7 +855,7 @@
                         <td className="px-5 py-4 border border-slate-700 min-w-[180px] bg-slate-800/40">
                           <div className="flex items-center gap-3 justify-between no-print">
                             <span className={`text-2xl font-black tracking-widest ${(totalRaw !== 0 && finalRem < redThreshold) ? 'text-red-400 glitch-text' : 'text-brand-400'}`}>
-                              {finalRem}
+                              <span className="calc-tip" {...tipProps(`${rowIndex}-final`, calcTips.final)}>{finalRem}</span>
                             </span>
                             <div className="w-16 lg:w-24 bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800">
                               <div className={`h-full ${barColor} transition-all duration-300`} style={{ width: `${percent}%` }}></div>
@@ -1049,6 +1148,13 @@
             </tfoot>
           </table>
         </div>
+
+        {calcTip && (
+          <div id="calc-tip" ref={calcTipRef} role="tooltip" className="no-print">
+            <div>{calcTip.text}</div>
+            {calcTip.warn && <div className="calc-tip-warn">⚠ 說明與系統數字不一致，請洽劉昌昇</div>}
+          </div>
+        )}
         </>
       );
     };
