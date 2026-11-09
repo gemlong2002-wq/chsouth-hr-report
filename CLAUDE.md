@@ -14,6 +14,8 @@
 
 ## 鐵律2:祕密值
 - 密碼、金鑰、token 的值不得寫進程式碼、commit、log 或任何檔案。
+- 禁止執行任何會印出憑證的指令,包括 git credential fill/get、讀取 Windows 認證管理員、
+  印出環境變數中的 token。需要驗證身分時,停下請 Boss 本人操作。
 
 ## 鐵律3:驗收
 - 改動完成後,先自我驗算,再派一個 fresh-context 的獨立 agent 驗收,才 commit。
